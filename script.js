@@ -3,7 +3,7 @@ const backButton = document.getElementById("backButton");
 const nextButton = document.getElementById("nextButton");
 const resultsInput = document.getElementById("resultsInput");
 const resultsSubmit = document.getElementById("resultsSubmit");
-
+let localPoke = localStorage.getItem("pokemon")
 let results = [];
 let limit = 30;
 let offset = 0;
@@ -31,12 +31,8 @@ function makeimageCol(pokemon) {
   image.width = 100;
   image.height = 100;
   image.addEventListener("click", () => {
-    pokedexElement.innerHTML = "";
-    createDescription(pokemon);
-    backButton.style.display = "inline";//hide next button and navbar, show back button
-    nextButton.style.display = "none";
-    resultsInput.style.display = "none"
-    resultsSubmit.style.display = "none"
+    pokeInfoPage(pokemon)
+    saveOnRefresh(pokemon)
   })
   imageCol.appendChild(image);
 
@@ -60,13 +56,13 @@ function drawUI() {
     pokedexElement.appendChild(container);
 
   });
+  checkStorage()
 }
 
 function getPokemon() {
   fetch(`https://pokeapi.co/api/v2/pokemon-species?limit=${limit}&offset=${offset}/`)
     .then((response) => { return response.json() })
     .then((json) => {
-      console.log(json);
       results = json["results"];
       drawUI();
       offset += parseInt(limit)
@@ -84,9 +80,11 @@ function goBack(pokeID) {//back button
   pokedexElement.innerHTML = "";
   offset = 0;
   getPokemon();
+  localStorage.clear()
 }
 function createDescription(pokemon) {//after image "click" clears pokedexElement, this gets and displays description about pokemon with image
   const pokeInfo = document.createElement("p");
+  pokeInfo.classList.add("container")
   getpokeID(pokemon)
   fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokeID}/`)
     .then((response) => { return response.json() })
@@ -95,7 +93,7 @@ function createDescription(pokemon) {//after image "click" clears pokedexElement
       let flavorTexts = json["flavor_text_entries"];
       console.log(json["name"]);
 
-      let descText = flavorTexts[0].flavor_text.replace(/\s/g, " ");//API sends poke descriptions with a bunch of random line breaks in between, this gets rid of them
+      let descText = checkLanguage(flavorTexts).replace(/\s/g, " ");//API sends poke descriptions with a bunch of random line breaks in between, this gets rid of them
 
       pokeInfo.innerText = capitalizeFirst(json["name"]) + `: ` + descText;
       console.log(pokeInfo)
@@ -108,6 +106,14 @@ function createDescription(pokemon) {//after image "click" clears pokedexElement
 
   console.log(pokeInfo)
 }
+function pokeInfoPage(pokemon) {
+  pokedexElement.innerHTML = "";
+  createDescription(pokemon);
+  backButton.style.display = "inline";//hide next button and navbar, show back button
+  nextButton.style.display = "none";
+  resultsInput.style.display = "none"
+  resultsSubmit.style.display = "none"
+}
 function changeResults() {//for navbar, to change reults per page
   pokedexElement.innerHTML = ""
   limit = resultsInput.value;
@@ -119,4 +125,26 @@ function changeResults() {//for navbar, to change reults per page
 }
 function capitalizeFirst(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
+}
+function checkLanguage(texts) {//finds english descriptions
+  for (let i = 0; i < texts.length; i++) {
+    if (texts[i].language.name == "en") {
+      console.log(texts[i].flavor_text)
+      console.log(i)
+      return texts[i].flavor_text
+    }
+  }
+}
+function saveOnRefresh(pokemon) {
+  localStorage.clear()
+  localStorage.setItem("limit", limit)
+  localStorage.setItem("pokemon", JSON.stringify(pokemon))
+}
+function checkStorage() {
+  if (localStorage.getItem("pokemon") !== null) {
+    limit=localStorage.getItem("limit")
+    resultsInput.placeholder = `Results per page: ${limit}`
+    pokeInfoPage(JSON.parse(localPoke))
+    return false
+  } else { return false }
 }
